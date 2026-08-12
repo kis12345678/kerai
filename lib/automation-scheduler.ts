@@ -32,6 +32,7 @@ async function tick() {
 
   for (const automation of automations) {
     if (running.has(automation.id)) continue;
+    if (automation.enabled === false) continue; // paused
     if (!dueNow(automation, now)) continue;
 
     running.add(automation.id);
@@ -42,6 +43,36 @@ async function tick() {
         return recordRun(automation.id, null, (err as Error).message);
       })
       .finally(() => running.delete(automation.id));
+  }
+}
+
+export type RunNowResult =
+  | { ok: true; result: string }
+  | { ok: false; error: string; alreadyRunning?: boolean };
+
+// Trigger an automation immediately (the "Run now" button), sharing the same concurrency
+// guard as the scheduler so a manual run and a scheduled tick never double-execute.
+export async function runAutomationNow(id: string): Promise<RunNowResult> {
+  const automations = await listAutomations();
+  const automation = automations.find((a) => a.id === id);
+  if (!automation) return { ok: false, error: "Automation not found" };
+
+  const running = globalThis.__omniaiSchedulerRunning ?? (globalThis.__omniaiSchedulerRunning = new Set());
+  if (running.has(id)) {
+    return { ok: false, error: "Already running — wait for it to finish.", alreadyRunning: true };
+  }
+
+  running.add(id);
+  try {
+    const result = await runAutomation(automation);
+    await recordRun(id, result, null);
+    return { ok: true, result };
+  } catch (err) {
+    const message = (err as Error).message;
+    await recordRun(id, null, message);
+    return { ok: false, error: message };
+  } finally {
+    running.delete(id);
   }
 }
 

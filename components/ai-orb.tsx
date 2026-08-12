@@ -4,11 +4,13 @@ import { useEffect, useRef } from "react";
 
 export type OrbState = "idle" | "listening" | "thinking" | "speaking";
 
+// Electric-cyan family, per the OpenJarvis design system — states are distinguished by
+// brightness/pulse, not hue shifts.
 const STATE_COLOR: Record<OrbState, [number, number, number]> = {
-  idle: [180, 140, 60], // dim amber
-  listening: [56, 214, 158], // emerald — mirrors the "actively capturing your command" accent
-  thinking: [255, 176, 62], // bright amber
-  speaking: [255, 200, 90], // warm gold
+  idle: [34, 211, 238], // dim cyan
+  listening: [103, 232, 249], // cyan-300 — "actively capturing your command"
+  thinking: [34, 211, 238], // electric cyan
+  speaking: [165, 243, 252], // cyan-200, brightest
 };
 
 const STATE_INTENSITY: Record<OrbState, number> = {

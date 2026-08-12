@@ -4,7 +4,7 @@ export type CloudProviderId = "openrouter" | "aihubmix" | "requesty";
 
 const SITE_HEADERS = {
   "HTTP-Referer": "http://localhost:3000",
-  "X-Title": "OmniAI",
+  "X-Title": "Kerai AI",
 };
 
 function makeProvider(id: CloudProviderId, baseURL: string, envVar: string, extraHeaders?: Record<string, string>) {

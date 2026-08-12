@@ -1,0 +1,160 @@
+<mxfile host="app.diagrams.net" agent="Kerai AI architecture" version="24.0.0">
+  <diagram name="Kerai AI — how a turn works" id="kerai-turn">
+    <mxGraphModel dx="1600" dy="1000" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1654" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+
+        <mxCell id="title" value="KERAI — one turn, end to end" style="text;html=1;fontSize=22;fontStyle=1;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;" vertex="1" parent="1">
+          <mxGeometry x="40" y="16" width="600" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="subtitle" value="Boxes name the file that does the work. The permission gate, the executor and the critic are the three things standing between a model&#39;s intention and your machine." style="text;html=1;fontSize=12;align=left;verticalAlign=middle;strokeColor=none;fillColor=none;fontColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="40" y="42" width="1100" height="20" as="geometry" />
+        </mxCell>
+
+        <!-- ============ INPUT ============ -->
+        <mxCell id="inputBox" value="INPUT" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#f5f9ff;strokeColor=#b0c4de;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;fontSize=11;fontStyle=1;fontColor=#4a6785;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="90" width="230" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="inChat" value="Chat panel&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;components/chat-panel.tsx&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="55" y="120" width="200" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="inVoice" value="Voice — wake word → STT&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;lib/use-speech.ts&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="55" y="180" width="200" height="45" as="geometry" />
+        </mxCell>
+        <mxCell id="inGest" value="Gestures (MediaPipe)&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;lib/use-gesture.ts&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="55" y="240" width="200" height="45" as="geometry" />
+        </mxCell>
+
+        <!-- ============ PIPELINE ============ -->
+        <mxCell id="p1" value="POST /api/chat&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;app/api/chat/route.ts&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="120" width="260" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p2" value="Fit the context window&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;compactMessages — history-compaction.ts&lt;br&gt;dropped span becomes a digest, not deleted&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="195" width="260" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p3" value="ROUTE — pick the specialist&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;routeTask — lib/agent-router.ts&lt;br&gt;1 explicit → 2 keyword score → 3 model (8s cap)&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="280" width="260" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p4" value="Jarvis  ·  Friday  ·  Ultron&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;toolsForAgent — lib/agents.ts&lt;br&gt;each gets only its own tools&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="370" width="260" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p5" value="PERMISSION&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#7a4a00&quot;&gt;buildToolApproval — lib/tool-risk.ts&lt;br&gt;safe · approve · deny · unclassified ⇒ approve&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;fontStyle=1;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="380" y="455" width="260" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p6" value="EXECUTOR&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;streamText tool loop, ≤ 20 steps&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="560" width="260" height="55" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p7" value="VERIFICATION&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#7a4a00&quot;&gt;verifyTurn — lib/critic.ts&lt;br&gt;1 free signals → 2 small model → 3 timeout = pass&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;fontStyle=1;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="380" y="660" width="260" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p8" value="worked?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="440" y="765" width="140" height="70" as="geometry" />
+        </mxCell>
+
+        <mxCell id="p9" value="Stream the reply&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;+ TTS if voice is on&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="380" y="880" width="260" height="45" as="geometry" />
+        </mxCell>
+
+        <mxCell id="retry" value="ONE retry&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;feeds the reason back,&lt;br&gt;never loops twice&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="700" y="770" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <mxCell id="approvalNote" value="User approves or denies&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;cryptographically signed;&lt;br&gt;a denial is honoured and logged&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="700" y="450" width="180" height="70" as="geometry" />
+        </mxCell>
+
+        <!-- ============ TOOL SURFACE ============ -->
+        <mxCell id="toolBox" value="TOOL SURFACE — only approved calls reach here" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#faf7fc;strokeColor=#9673a6;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;fontSize=11;fontStyle=1;fontColor=#6b4c86;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="960" y="120" width="280" height="430" as="geometry" />
+        </mxCell>
+        <mxCell id="t1" value="Files &amp; shell — agent-tools.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="975" y="150" width="250" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" value="Git — git-tools.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="975" y="196" width="250" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" value="Web fetch &amp; search — web-tools.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="975" y="242" width="250" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t4" value="Real browser — browser-tools.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="975" y="288" width="250" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t5" value="Machine state — system-tools.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="975" y="334" width="250" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" value="Clipboard &amp; open — local-tools.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="975" y="380" width="250" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t7" value="This PC — desktop-control.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="975" y="426" width="250" height="36" as="geometry" />
+        </mxCell>
+        <mxCell id="t8" value="Phone over ADB — android-tools.ts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="975" y="472" width="250" height="36" as="geometry" />
+        </mxCell>
+
+        <!-- ============ STATE ON DISK ============ -->
+        <mxCell id="stateBox" value="STATE ON DISK — .omniai/" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fffdf5;strokeColor=#d6b656;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;fontSize=11;fontStyle=1;fontColor=#8a6d1f;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="960" y="600" width="280" height="250" as="geometry" />
+        </mxCell>
+        <mxCell id="s1" value="audit.jsonl&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;lib/audit.ts — every action, denial&lt;br&gt;and verdict. Payloads withheld.&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="975" y="630" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="s2" value="memory.md&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;project memory, loaded into&lt;br&gt;the system prompt each turn&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="975" y="702" width="250" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="s3" value="embeddings-index.json&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;semantic-search.ts — indexes code,&lt;br&gt;not conversations&lt;/font&gt;" style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;align=left;spacingLeft=6;" vertex="1" parent="1">
+          <mxGeometry x="975" y="774" width="250" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- ============ NOT BUILT YET ============ -->
+        <mxCell id="gapBox" value="NOT BUILT YET" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#fbf3f3;strokeColor=#b85450;verticalAlign=top;align=left;spacingLeft=8;spacingTop=4;fontSize=11;fontStyle=1;fontColor=#8a2f2c;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="560" width="260" height="240" as="geometry" />
+        </mxCell>
+        <mxCell id="g1" value="PLANNER&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;decompose before acting; the loop&lt;br&gt;is still reactive, one call at a time&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="590" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="g2" value="MEMORY RETRIEVAL&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;episodic / semantic recall of past&lt;br&gt;conversations — nothing queries them&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="655" width="230" height="55" as="geometry" />
+        </mxCell>
+        <mxCell id="g3" value="WORLD MODEL&lt;br&gt;&lt;font style=&quot;font-size: 10px;&quot; color=&quot;#666666&quot;&gt;persistent view of the machine;&lt;br&gt;state is polled live and discarded&lt;/font&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#b85450;fontSize=11;dashed=1;" vertex="1" parent="1">
+          <mxGeometry x="55" y="720" width="230" height="55" as="geometry" />
+        </mxCell>
+
+        <!-- ============ EDGES ============ -->
+        <mxCell id="e1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="inChat" target="p1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="inVoice" target="p1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="inGest" target="p1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#82b366;" edge="1" parent="1" source="p1" target="p2"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#82b366;" edge="1" parent="1" source="p2" target="p3"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#82b366;" edge="1" parent="1" source="p3" target="p4"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#82b366;" edge="1" parent="1" source="p4" target="p5"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e8" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#d79b00;strokeWidth=2;" edge="1" parent="1" source="p5" target="p6"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e9" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#82b366;" edge="1" parent="1" source="p6" target="p7"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e10" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#d79b00;" edge="1" parent="1" source="p7" target="p8"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e11" value="yes" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#82b366;fontSize=11;" edge="1" parent="1" source="p8" target="p9"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e12" value="no" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#b85450;fontSize=11;" edge="1" parent="1" source="p8" target="retry"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e13" value="with the reason" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#b85450;fontSize=11;dashed=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="retry" target="p6"><mxGeometry relative="1" as="geometry"><Array as="points"><mxPoint x="780" y="588" /></Array></mxGeometry></mxCell>
+
+        <mxCell id="e14" value="approved calls only" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9673a6;fontSize=11;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" edge="1" parent="1" source="p6" target="toolBox"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e15" value="results" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#9673a6;fontSize=11;dashed=1;" edge="1" parent="1" source="toolBox" target="p7"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e16" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#d6b656;dashed=1;" edge="1" parent="1" source="p5" target="approvalNote"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+        <mxCell id="e17" value="actions &amp; denials" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#d6b656;fontSize=10;dashed=1;" edge="1" parent="1" source="p6" target="s1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e18" value="verdicts" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#d6b656;fontSize=10;dashed=1;" edge="1" parent="1" source="p7" target="s1"><mxGeometry relative="1" as="geometry" /></mxCell>
+        <mxCell id="e19" value="loaded each turn" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#d6b656;fontSize=10;dashed=1;" edge="1" parent="1" source="s2" target="p1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

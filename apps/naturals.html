@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>Nature Gallery – Stunning Photos</title>
+<style>
+/* Reset & typography */
+*, *::before, *::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Segoe UI',Arial,sans-serif;background:#121212;color:#eee;display:flex;justify-content:center;align-items:center;overflow:hidden}
+#container{position:relative;width:90vw;height:90vh;max-width:900px;border-radius:12px;overflow:hidden;box-shadow:0 8px 25px rgba(0,0,0,.7);background:#000}
+/* Gradient overlay for captions */
+#overlay{position:absolute;top:0;left:0;width:100%;height:100%;background:linear-gradient(to bottom,rgba(0,0,0,0) 30%,rgba(0,0,0,.75));pointer-events:none}
+.carousel{width:100%;height:100%;overflow:hidden;position:absolute;top:0;left:0;display:flex;justify-content:center;align-items:center;background:#000}
+.carousel img{max-width:100%;max-height:100%;object-fit:cover;opacity:0}
+img.active{opacity:1}
+/* Caption */
+#caption{position:absolute;bottom:10%;left:50%;transform:translateX(-50%);color:#fff;font-size:1.3rem;background:rgba(0,0,0,.55);padding:.6em 1.2em;border-radius:4px}
+/* Controls */
+nav{position:absolute;top:50%;left:0;height:100%;display:flex;width:calc(100%/3)}
+.arrow{flex-grow:0;font-size:2rem;color:#fff;background:rgba(0,0,0,.5);border-radius:50%;width:48px;height:48px;display:flex;align-items:center;justify-content:center;margin:-24px 10% 0;-ms-transform:translateY(-50%);transform:translateY(-50%)}
+.arrow:hover{background:rgba(0,0,0,.7)}
+#dots{position:absolute;bottom:20px;width:100%;display:flex;justify-content:center;margin:auto 0}
+#dots span{text-align:center;background:#fff;border-radius:50%;width:10px;height:10px;margin:0 5px;opacity:.6;cursor:pointer}
+#dots span.active{background:#4caf50;opacity:1}
+/* Play/Pause */
+#playPause{position:absolute;bottom:10%;right:10%!important;transform:none;background:rgba(0,0,0,.7);color:white;border-radius:50%;width:36px;height:36px;font-size:18px;text-align:center;line-height:32px;cursor:pointer}
+/* Fullscreen */
+#fullScreen{position:absolute;bottom:10%;left:10%!important;transform:none;background:rgba(0,0,0,.7);color:white;border-radius:50%;width:36px;height:36px;font-size:18px;text-align:center;line-height:32px;cursor:pointer}
+#playPause:hover,#fullScreen:hover{background:#4caf50}
+/* Responsive */
+@media(max-width:500px){#caption{font-size:1rem}}
+</style>
+</head>
+<body>
+<div id="container">
+  <div class="carousel" id="carousel"></div>
+  <div id="overlay"></div>
+  <nav>
+    <button class="arrow" id="prev">◀︎</button>
+    <div style="flex:1"></div> <!-- spacer -->
+    <button class="arrow" id="next">▶︎</button>
+  </nav>
+  <div id="dots"></div>
+  <div id="caption">Loading…</div>
+  <div id="playPause" title="Play/Pause">⏸</div>
+  <div id="fullScreen" title="Fullscreen">⛶</div>
+</div>
+<script>
+// Image sources (seeded for consistent pics)
+const images=[
+  {term:'water',url:'https://picsum.photos/seed/water/1600/900'},
+  {term:'forest',url:'https://picsum.photos/seed/forest/1600/900'},
+  {term:'sky',url:'https://picsum.photos/seed/sky/1600/900'},
+  {term:'mountains',url:'https://picsum.photos/seed/mountains/1600/900'},
+  {term:'river',url:'https://picsum.photos/seed/river/1600/900'},
+  {term:'trees',url:'https://picsum.photos/seed/trees/1600/900'}
+];
+const carousel=document.getElementById('carousel');
+const caption=document.getElementById('caption');
+const dots=document.getElementById('dots');
+let current=0; let playing=true;
+// Load images and create dots
+images.forEach((img,i)=>{
+  const imgEl=document.createElement('img');
+  imgEl.src=img.url+'?'+Date.now();
+  imgEl.alt=img.term.charAt(0).toUpperCase()+img.term.slice(1);
+  if(i===current){imgEl.classList.add('active');caption.textContent=imgEl.alt;}
+  carousel.appendChild(imgEl);
+  const dot=document.createElement('span');
+  dot.onclick=()=>goTo(i); dots.appendChild(dot);
+});
+function show(index){const imgs=carousel.querySelectorAll('img');imgs.forEach(im=>im.classList.remove('active'));imgs[index].classList.add('active');caption.textContent=imgs[index].alt;updateDots(index);}  
+function goTo(index){if(index===current)return;show(index);current=index;}   
+function next(){goTo((current+1)%images.length);}   
+function prev(){goTo((current-1+images.length)%images.length);}  
+function updateDots(activeIdx){Array.from(dots.children).forEach((d,i)=>{d.className=i===activeIdx?'active':''});}
+// Controls
+document.getElementById('prev').onclick=prev;
+document.getElementById('next').onclick=next;
+document.getElementById('playPause').onclick=()=>{playing=!playing;this.textContent=playing? '⏸':'▶';};
+// Auto rotate interval
+const interval=setInterval(()=>{if(playing) next();},7000);
+// Pause when hovering container
+document.getElementById('container').addEventListener('mouseenter',()=>playing=false); 
+// Resume when leaving
+document.getElementById('container').addEventListener('mouseleave',()=>playing=true);
+// Fullscreen toggle
+const fsBtn=document.getElementById('fullScreen');
+syncFullScreenState();
+fsBtn.onclick=() => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(err=>console.warn(err));
+  } else { /* exit */
+    document.exitFullscreen();}
+};
+navigator.onfullscreenchange=()=>{syncFullScreenState();};
+function syncFullScreenState(){fsBtn.textContent=document.fullscreenElement?'✕':'⛶';}
+</script>
+</body>
+</html>

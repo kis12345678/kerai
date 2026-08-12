@@ -281,11 +281,23 @@ function cleanForSpeech(text: string): string {
 export type TtsStatus = "idle" | "loading-model" | "generating" | "speaking";
 export type VoiceEngine = "local" | "groq";
 
-async function synthesizeSpeechCloud(text: string): Promise<Blob> {
+// Injected by the Electron desktop shell's preload (desktop/preload.js). Undefined in a browser.
+declare global {
+  interface Window {
+    keraiNative?: {
+      isDesktop?: boolean;
+      speak?: (text: string) => Promise<void>;
+      stopSpeaking?: () => Promise<void>;
+    };
+  }
+}
+
+async function synthesizeSpeechCloud(text: string, voiceId?: string): Promise<Blob> {
   const res = await fetch("/api/tts", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ text }),
+    // voiceId picks the agent's ElevenLabs voice; the server falls back to Groq without it.
+    body: JSON.stringify({ text, voiceId }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -323,23 +335,56 @@ export function useSpeak() {
   const stop = useCallback(() => {
     generationRef.current += 1; // invalidate any in-flight generation
     releaseCurrentAudio();
+    if (typeof window !== "undefined") window.keraiNative?.stopSpeaking?.();
     setStatus("idle");
   }, [releaseCurrentAudio]);
 
   const speak = useCallback(
-    async (text: string, engine: VoiceEngine = "local") => {
+    async (text: string, engine: VoiceEngine = "local", voiceId?: string) => {
       const cleaned = cleanForSpeech(text);
       if (!cleaned) return;
 
       const myGeneration = ++generationRef.current;
       releaseCurrentAudio();
 
+      // Desktop (Electron) shell. The in-page Kokoro model doesn't load in Electron, so speech
+      // uses Groq's natural cloud voice when available (it plays fine here), and falls back to
+      // the OS synthesizer — robotic, but always works — when Groq is unavailable (e.g. its
+      // terms haven't been accepted yet). A normal browser skips this and runs the code below.
+      const native = typeof window !== "undefined" ? window.keraiNative : undefined;
+      if (native?.speak) {
+        try {
+          setStatus("generating");
+          const blob = await synthesizeSpeechCloud(cleaned, voiceId);
+          if (myGeneration !== generationRef.current) return;
+          const url = URL.createObjectURL(blob);
+          currentUrlRef.current = url;
+          const audio = new Audio(url);
+          audioRef.current = audio;
+          audio.onended = () => { if (myGeneration === generationRef.current) setStatus("idle"); };
+          audio.onerror = () => { if (myGeneration === generationRef.current) setStatus("idle"); };
+          setStatus("speaking");
+          await audio.play();
+        } catch {
+          if (myGeneration !== generationRef.current) return;
+          setStatus("speaking"); // Groq unavailable → OS voice
+          try {
+            await native.speak(cleaned);
+          } finally {
+            if (myGeneration === generationRef.current) setStatus("idle");
+          }
+        }
+        return;
+      }
+
       try {
         let blob: Blob;
-        if (engine === "groq") {
+        // A per-agent voiceId always uses the cloud (ElevenLabs) voice, whatever the engine
+        // toggle says — that's how each agent speaks in character.
+        if (engine === "groq" || voiceId) {
           setStatus("generating");
           setModelLoadPercent(null);
-          blob = await synthesizeSpeechCloud(cleaned);
+          blob = await synthesizeSpeechCloud(cleaned, voiceId);
         } else {
           setStatus("loading-model");
           setModelLoadPercent(null);

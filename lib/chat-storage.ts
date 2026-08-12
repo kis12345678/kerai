@@ -60,6 +60,63 @@ export function deleteSession(id: string): void {
   );
 }
 
+export function renameSession(id: string, title: string): void {
+  const sessions = readJson<ChatSession[]>(SESSIONS_KEY) ?? [];
+  const idx = sessions.findIndex((s) => s.id === id);
+  if (idx === -1) return;
+  sessions[idx] = { ...sessions[idx], title: title.trim() || sessions[idx].title, updatedAt: Date.now() };
+  writeJson(SESSIONS_KEY, sessions);
+}
+
+// Render a session as human-readable markdown for export (downloads as a .md file).
+function toolLine(part: { type: string; toolCallId: string; input?: Record<string, unknown> }): string {
+  const name = part.type.replace(/^tool-/, "");
+  const input = part.input ?? {};
+  const path = (input.path as string) ?? "";
+  const desc =
+    name === "runCommand"
+      ? `$ ${input.command as string}`
+      : name === "writeFile" || name === "editFile"
+        ? `${name} ${path}`
+        : path
+          ? `${name} ${path}`
+          : name;
+  return `> 🔧 [tool: ${desc}]`;
+}
+
+export function sessionToMarkdown(session: ChatSession): string {
+  const parts: string[] = [`# ${session.title}`, ""];
+  for (const message of session.messages) {
+    const role = message.role === "user" ? "You" : "Kerai AI";
+    const text = message.parts
+      .filter((p) => p.type === "text")
+      .map((p) => (p as { text?: string }).text ?? "")
+      .join("\n\n")
+      .trim();
+    const tools = message.parts
+      .filter((p) => p.type.startsWith("tool-") || p.type === "dynamic-tool")
+      .map((p) => toolLine(p as Parameters<typeof toolLine>[0]))
+      .join("\n");
+    if (!text && !tools) continue;
+    parts.push(`**${role}**:${text ? `\n${text}` : ""}${tools ? `\n${tools}` : ""}`, "");
+  }
+  return parts.join("\n");
+}
+
+export function downloadSession(session: ChatSession): void {
+  if (typeof window === "undefined") return;
+  const blob = new Blob([sessionToMarkdown(session)], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  const safe = session.title.replace(/[\\/:*?"<>|]/g, "-").slice(0, 60) || "chat";
+  a.href = url;
+  a.download = `${safe}.md`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
 export function deriveTitle(messages: UIMessage[]): string {
   const firstUserText = messages
     .find((m) => m.role === "user")

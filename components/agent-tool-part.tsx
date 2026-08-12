@@ -40,6 +40,8 @@ const READ_ONLY_TOOLS = new Set([
   "browserGetText",
   "browserScreenshot",
   "getSystemStatus",
+  "getLocalTime",
+  "readClipboard",
 ]);
 
 // Heuristic only — the approval gate is the real safeguard. This just flags commands worth a
@@ -105,6 +107,14 @@ function summarize(toolName: string, input: Record<string, unknown> | undefined)
       return `Press ${input?.key as string}`;
     case "getSystemStatus":
       return "Check PC status";
+    case "getLocalTime":
+      return "Check local date/time";
+    case "readClipboard":
+      return "Read clipboard";
+    case "writeClipboard":
+      return `Copy ${(input?.text as string)?.length ?? 0} chars to clipboard`;
+    case "openInBrowser":
+      return `Open ${input?.url as string} in browser`;
     default:
       return toolName;
   }
@@ -147,6 +157,14 @@ function icon(toolName: string): string {
       return "🖱️";
     case "getSystemStatus":
       return "🖥️";
+    case "getLocalTime":
+      return "🕐";
+    case "readClipboard":
+      return "📋";
+    case "writeClipboard":
+      return "📋";
+    case "openInBrowser":
+      return "🖱️";
     default:
       return "🔧";
   }
@@ -170,12 +188,12 @@ export function AgentToolPart({
     return (
       <div
         className={`rounded-xl border px-4 py-3 ${
-          risky ? "border-red-500/40 bg-red-500/5" : "border-amber-500/30 bg-amber-500/5"
+          risky ? "border-red-500/40 bg-red-500/5" : "border-accent/30 bg-accent/5"
         }`}
       >
         <div
           className={`mb-2 flex items-center gap-2 text-sm font-medium ${
-            risky ? "text-red-300" : "text-amber-300"
+            risky ? "text-red-300" : "text-accent"
           }`}
         >
           <span>{icon(toolName)}</span>
@@ -190,13 +208,13 @@ export function AgentToolPart({
         <div className="mt-3 flex gap-2">
           <button
             onClick={() => onApprove(part.approval!.id)}
-            className="rounded-lg bg-emerald-500/90 px-3 py-1.5 text-xs font-medium text-zinc-950 hover:bg-emerald-400"
+            className="rounded-lg bg-accent px-3 py-1.5 text-xs font-medium text-accent-ink shadow-accent transition-all hover:brightness-110"
           >
             Approve
           </button>
           <button
             onClick={() => onDeny(part.approval!.id)}
-            className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-white/10"
+            className="rounded-lg border border-edge bg-surface px-3 py-1.5 text-xs font-medium text-frost/90 hover:bg-edge"
           >
             Deny
           </button>
@@ -207,7 +225,7 @@ export function AgentToolPart({
 
   if (part.state === "output-denied") {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-zinc-500">
+      <div className="rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm text-fog">
         <span className="mr-2">{icon(toolName)}</span>
         {label} — denied
         {part.approval?.reason ? ` (${part.approval.reason})` : ""}
@@ -233,8 +251,8 @@ export function AgentToolPart({
 
     if (wroteHtmlApp) {
       return (
-        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm">
-          <div className="mb-2 text-zinc-300">
+        <div className="rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm">
+          <div className="mb-2 text-frost/75">
             <span className="mr-2">{icon(toolName)}</span>
             {label} — done
           </div>
@@ -247,8 +265,8 @@ export function AgentToolPart({
       const image = (part.output as { image?: string } | undefined)?.image;
       if (image) {
         return (
-          <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm">
-            <div className="mb-2 text-zinc-300">
+          <div className="rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm">
+            <div className="mb-2 text-frost/75">
               <span className="mr-2">{icon(toolName)}</span>
               {label}
             </div>
@@ -260,13 +278,13 @@ export function AgentToolPart({
     }
 
     return (
-      <details className="group rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm">
-        <summary className="cursor-pointer list-none text-zinc-300 marker:content-none">
+      <details className="group rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm">
+        <summary className="cursor-pointer list-none text-frost/75 marker:content-none">
           <span className="mr-2">{icon(toolName)}</span>
           {label}
           {isReadOnly ? "" : " — done"}
         </summary>
-        <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-black/40 p-2 text-xs text-zinc-400">
+        <pre className="mt-2 max-h-64 overflow-auto rounded-lg bg-ink/70 p-2 text-xs text-fog">
           {formatOutput(part.output)}
         </pre>
       </details>
@@ -275,7 +293,7 @@ export function AgentToolPart({
 
   if (part.state === "approval-responded") {
     return (
-      <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-xs text-zinc-500">
+      <div className="rounded-xl border border-edge bg-surface px-4 py-2.5 text-xs text-fog">
         <span className="mr-2">{icon(toolName)}</span>
         {label} — {part.approval?.approved ? "approved" : "denied"}
         {part.approval?.isAutomatic ? " (auto)" : ""}, running…
@@ -285,7 +303,7 @@ export function AgentToolPart({
 
   // input-streaming / input-available (read-only tools mid-flight, or before approval state arrives)
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-zinc-400">
+    <div className="rounded-xl border border-edge bg-surface px-4 py-2.5 text-sm text-fog">
       <span className="mr-2">{icon(toolName)}</span>
       {label}…
     </div>
@@ -305,7 +323,7 @@ function ToolInputPreview({
       return <HtmlAppPreview html={content} />;
     }
     return (
-      <pre className="max-h-56 overflow-auto rounded-lg bg-black/40 p-2 text-xs text-zinc-300">
+      <pre className="max-h-56 overflow-auto rounded-lg bg-ink/70 p-2 text-xs text-frost/75">
         {content?.slice(0, 4000)}
       </pre>
     );
@@ -317,7 +335,7 @@ function ToolInputPreview({
           <div className="mb-1 font-medium">− old</div>
           <pre className="whitespace-pre-wrap">{(input?.oldString as string)?.slice(0, 2000)}</pre>
         </div>
-        <div className="rounded-lg bg-emerald-500/10 p-2 text-emerald-300">
+        <div className="rounded-lg bg-accent/10 p-2 text-accent">
           <div className="mb-1 font-medium">+ new</div>
           <pre className="whitespace-pre-wrap">{(input?.newString as string)?.slice(0, 2000)}</pre>
         </div>
@@ -326,14 +344,14 @@ function ToolInputPreview({
   }
   if (toolName === "runCommand") {
     return (
-      <pre className="overflow-auto rounded-lg bg-black/40 p-2 text-xs text-zinc-200">
+      <pre className="overflow-auto rounded-lg bg-ink/70 p-2 text-xs text-frost/90">
         $ {input?.command as string}
       </pre>
     );
   }
   if (toolName === "gitCommit") {
     return (
-      <pre className="overflow-auto rounded-lg bg-black/40 p-2 text-xs text-zinc-200">
+      <pre className="overflow-auto rounded-lg bg-ink/70 p-2 text-xs text-frost/90">
         {input?.message as string}
         {input?.addAll === false ? "" : "\n(stages all changes first)"}
       </pre>
@@ -341,7 +359,7 @@ function ToolInputPreview({
   }
   if (toolName === "browserClick" || toolName === "browserType" || toolName === "browserPressKey") {
     return (
-      <pre className="overflow-auto rounded-lg bg-black/40 p-2 text-xs text-zinc-200">
+      <pre className="overflow-auto rounded-lg bg-ink/70 p-2 text-xs text-frost/90">
         {JSON.stringify(input, null, 2)}
       </pre>
     );
@@ -357,12 +375,12 @@ function HtmlAppPreview({ html }: { html: string }) {
   const [tab, setTab] = useState<"preview" | "code">("preview");
 
   return (
-    <div className="overflow-hidden rounded-lg border border-white/10">
-      <div className="flex items-center gap-1 border-b border-white/10 bg-black/20 px-2 py-1.5">
+    <div className="overflow-hidden rounded-lg border border-edge">
+      <div className="flex items-center gap-1 border-b border-edge bg-ink/50 px-2 py-1.5">
         <button
           onClick={() => setTab("preview")}
           className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-            tab === "preview" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-200"
+            tab === "preview" ? "bg-edge text-frost" : "text-fog/60 hover:text-frost"
           }`}
         >
           Preview
@@ -370,7 +388,7 @@ function HtmlAppPreview({ html }: { html: string }) {
         <button
           onClick={() => setTab("code")}
           className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-            tab === "code" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-200"
+            tab === "code" ? "bg-edge text-frost" : "text-fog/60 hover:text-frost"
           }`}
         >
           Code
@@ -384,7 +402,7 @@ function HtmlAppPreview({ html }: { html: string }) {
           className="h-96 w-full border-0 bg-white"
         />
       ) : (
-        <pre className="max-h-96 overflow-auto bg-black/40 p-2 text-xs text-zinc-300">{html}</pre>
+        <pre className="max-h-96 overflow-auto bg-ink/70 p-2 text-xs text-frost/75">{html}</pre>
       )}
     </div>
   );

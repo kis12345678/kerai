@@ -43,7 +43,7 @@ export function createWebTools() {
         try {
           const res = await fetch(url, {
             signal: controller.signal,
-            headers: { "User-Agent": "OmniAI-Agent/1.0" },
+            headers: { "User-Agent": "KeraiAI-Agent/1.0" },
           });
           const contentType = res.headers.get("content-type") ?? "";
           const raw = await res.text();

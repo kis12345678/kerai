@@ -1,15 +1,26 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
-  --foreground: #ededed;
+  --background: #05080f;
+  --foreground: #e9eef6;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: "Satoshi", var(--font-geist-sans), "Inter", Arial, Helvetica, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* OpenJarvis design tokens */
+  --color-ink: #05080f; /* page background */
+  --color-surface: #0e141f; /* elevated surfaces */
+  --color-edge: #1b2535; /* borders / separation */
+  --color-accent: #22d3ee; /* electric cyan — primary actions */
+  --color-accent-ink: #04121a; /* text on cyan fills */
+  --color-frost: #e9eef6; /* primary text on dark */
+  --color-fog: #9aabc0; /* muted interactive text */
+
+  --shadow-accent: 0 10px 34px 0 rgb(34 211 238 / 0.28); /* primary CTA glow */
 }
 
 body {

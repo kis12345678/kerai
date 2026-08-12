@@ -7,11 +7,12 @@ import { createWebSearchTool, isTavilyConfigured } from "@/lib/web-search";
 import { createSemanticSearchTool } from "@/lib/semantic-search";
 import { createBrowserTools } from "@/lib/browser-tools";
 import { createSystemTools } from "@/lib/system-tools";
+import { createLocalTools } from "@/lib/local-tools";
 import { getCloudProvider } from "@/lib/cloud-providers";
 import { findModel, DEFAULT_MODEL } from "@/lib/models";
 import type { Automation } from "@/lib/automation-store";
 
-const AUTOMATION_SYSTEM_PROMPT = `You are OmniAI running an unattended scheduled automation — no one is watching this run in real time. You only have READ-ONLY tools (listing/reading files, git inspection, web fetch/search, browser reading, system status). You cannot write files, run commands, commit, or interact with a page (click/type). If the task genuinely requires one of those, say so plainly in your answer instead of attempting it. Give a concise, complete final answer — this becomes a log entry the user reads later, not a conversation.`;
+const AUTOMATION_SYSTEM_PROMPT = `You are Kerai AI running an unattended scheduled automation — no one is watching this run in real time. You only have READ-ONLY tools (listing/reading files, git inspection, web fetch/search, browser reading, system status). You cannot write files, run commands, commit, or interact with a page (click/type). If the task genuinely requires one of those, say so plainly in your answer instead of attempting it. Give a concise, complete final answer — this becomes a log entry the user reads later, not a conversation.`;
 
 function readOnlyToolsFor(root: string) {
   const { listDirectory, readFile, searchFiles } = createAgentTools(root);
@@ -19,6 +20,7 @@ function readOnlyToolsFor(root: string) {
   const { webFetch } = createWebTools();
   const { browserNavigate, browserGetText, browserScreenshot } = createBrowserTools();
   const { getSystemStatus } = createSystemTools();
+  const { getLocalTime, readClipboard } = createLocalTools();
   return {
     listDirectory,
     readFile,
@@ -31,6 +33,8 @@ function readOnlyToolsFor(root: string) {
     browserGetText,
     browserScreenshot,
     getSystemStatus,
+    getLocalTime,
+    readClipboard,
     ...createSemanticSearchTool(root),
     ...(isTavilyConfigured() ? createWebSearchTool() : {}),
   };

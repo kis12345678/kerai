@@ -25,18 +25,18 @@ export function GestureToggle({
         title={`Gesture control — ${GESTURE_HELP}. Needs a webcam; runs fully in-browser, nothing leaves the machine.`}
         className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${
           enabled
-            ? "border-amber-500/40 bg-amber-500/10 text-amber-300"
-            : "border-white/10 bg-white/5 text-zinc-300 hover:bg-white/10"
+            ? "border-accent/40 bg-accent/10 text-accent"
+            : "border-edge bg-surface text-frost/75 hover:bg-edge"
         }`}
       >
         ✋ Gestures{enabled && state === "loading" ? "…" : ""}
       </button>
 
       {enabled && (
-        <div className="relative h-12 w-16 overflow-hidden rounded-lg border border-white/10 bg-black">
+        <div className="relative h-12 w-16 overflow-hidden rounded-lg border border-edge bg-black">
           <video ref={videoRef} muted playsInline className="h-full w-full -scale-x-100 object-cover" />
           {lastGesture && (
-            <div className="absolute bottom-0 left-0 right-0 truncate bg-black/70 px-1 text-center text-[9px] leading-tight text-emerald-300">
+            <div className="absolute bottom-0 left-0 right-0 truncate bg-black/70 px-1 text-center text-[9px] leading-tight text-accent">
               {lastGesture}
             </div>
           )}

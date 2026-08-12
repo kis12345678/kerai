@@ -1,4 +1,4 @@
-# OmniAI
+# Kerai AI
 
 A single local chat that auto-detects what you need — plain conversation, a full self-contained app built and previewed live, or real edits to a codebase on disk — running on your own GPU via [Ollama](https://ollama.com) by default, with zero API keys and zero cloud cost. A handful of things are opt-in cloud add-ons (see [Optional cloud integrations](#optional-cloud-integrations)) — everything else stays local unless you deliberately turn one of those on.
 
@@ -10,12 +10,13 @@ Chat is a docked panel available from every screen (see [Layout](#layout) below)
 - **Build an app** — asked to build/make something, it writes one complete, self-contained HTML file (inline CSS/JS, no build step) with `writeFile`. The transcript shows a live iframe preview (and a Code tab) right where the tool call happened, both before you approve the write and after.
 - **Work in a real codebase** — it can `listDirectory`/`readFile`/`searchFiles` freely to explore (plus `semanticSearch`, which builds a local embeddings index via Ollama's `nomic-embed-text` the first time it's used, for finding conceptually related code when you don't know the exact string), and `writeFile`/`editFile`/`runCommand` to make changes. It also has `gitStatus`/`gitDiff`/`gitLog` to inspect repo state freely and `gitCommit` to stage and commit. Point the "Workspace" field at any project on disk, including this one.
 - **Look things up or act on the web** — `webFetch` reads a URL's content you already know (docs, API references, error messages). `webSearch` (only present when `TAVILY_API_KEY` is set — see below) actually searches the web via [Tavily](https://tavily.com) when you don't know the exact URL. For pages that need real JavaScript rendering, logins, or clicking through a flow, it can drive an actual persistent headless Chromium session via `browserNavigate`/`browserGetText`/`browserScreenshot`/`browserClick`/`browserType`/`browserPressKey`.
+- **Act on your desktop** — `getLocalTime` answers anything date/time-dependent (your training data doesn't know what time it is). `readClipboard` grabs text you copied elsewhere ("summarize what I just copied"), `writeClipboard` copies text to your clipboard, and `openInBrowser` opens a URL in your real, visible default browser (approval-gated, http(s) only).
 
 `writeFile`, `editFile`, `runCommand`, `gitCommit`, and the interactive browser tools (`browserClick`/`browserType`/`browserPressKey`) each require your explicit approval before they execute, shown right in the transcript (Claude Code/Codex-style permission prompts). Read-only tools (`listDirectory`, `readFile`, `searchFiles`, `semanticSearch`, `gitStatus`, `gitDiff`, `gitLog`, `webFetch`, `webSearch`, `browserNavigate`, `browserGetText`, `browserScreenshot`, `getSystemStatus`) run without asking.
 
 The model can also keep a persistent project memory: notes it writes to `.omniai/memory.md` in the workspace (conventions, past decisions, your stated preferences) are re-loaded into its system prompt on every future chat against that workspace. The `semanticSearch` embeddings cache lives alongside it at `.omniai/embeddings-index.json`.
 
-A **Stop** button appears next to "Working…" (and next to "Speaking…" in voice mode) whenever a response is in flight — it cancels the streaming request and halts any TTS playback immediately, covering both the text and voice cases with one control.
+A **Stop** button appears next to "Working…" (and next to "Speaking…" in voice mode) whenever a response is in flight — it cancels the streaming request and halts any TTS playback immediately, covering both the text and voice cases with one control. Replies render with lightweight markdown (code blocks, inline code, bold/italic, links, lists, headings) so model output is readable, and every message has hover actions: **Copy** to copy its text, and **Regenerate** on the latest reply to redo it.
 
 Long-running sessions are compacted automatically (`lib/history-compaction.ts`): once a conversation's total size passes a rough character budget (~120k, a proxy for tokens, checked before every request), the oldest messages are dropped to keep it under that budget — never splitting a message internally, since a tool call and its result always live together as parts of one message in this SDK's format. This happens server-side, silently, and doesn't touch what's shown in your sidebar or saved to `localStorage` — only what's actually sent to the model on the next request.
 
@@ -46,7 +47,7 @@ Needs a webcam and a secure context (same constraint as the mic — `localhost` 
 
 ## Installing as an app
 
-OmniAI is installable as a standalone PWA (`app/manifest.ts`) — look for the install icon in your browser's address bar, or "Install app" in the menu. It launches without browser chrome, like a native app, so it feels less like "a tab you bookmarked" and more like Jarvis is actually running on your machine. The manifest and its icon (`public/icon.svg`) are deliberately excluded from the login gate in `proxy.ts` — browsers fetch them unauthenticated to decide whether to offer the install prompt, and neither file contains anything sensitive.
+Kerai AI is installable as a standalone PWA (`app/manifest.ts`) — look for the install icon in your browser's address bar, or "Install app" in the menu. It launches without browser chrome, like a native app, so it feels less like "a tab you bookmarked" and more like Jarvis is actually running on your machine. The manifest and its icon (`public/icon.svg`) are deliberately excluded from the login gate in `proxy.ts` — browsers fetch them unauthenticated to decide whether to offer the install prompt, and neither file contains anything sensitive.
 
 ## Layout
 
@@ -54,6 +55,8 @@ Logging in takes you straight to **Dashboard** — live stats read straight from
   - CPU/memory/battery come from [`systeminformation`](https://systeminformation.io/). GPU stats prefer `nvidia-smi` when present (real utilization %, temp, power draw — `systeminformation` can't read live NVIDIA utilization on Windows), falling back to `systeminformation`'s cross-vendor reader (model + VRAM only, no utilization) for AMD/Intel-only machines or if `nvidia-smi` isn't on PATH.
 
 The sidebar has two page tabs — **Dashboard** and **Automations** — plus a **Chat panel** that isn't a page at all: it's a docked column on the right, toggleable from the sidebar ("💬 Open/Close chat panel") or the floating 💬 button that appears once it's closed. Because it's mounted once at the layout level rather than per-page, it keeps its conversation, scroll position, and in-progress draft as you move between Dashboard and Automations — closing it only hides it, it doesn't reset anything. On narrow/mobile screens it takes over the full screen instead of docking, since 420px wouldn't leave room for anything else.
+
+The History panel lets you search your conversations, rename them (double-click or ✏️), and export any of them — or the active one via the ⬇️ Export button in the chat header — as a standalone Markdown file.
 
 The glowing orb (`components/ai-orb.tsx`) is a plain `<canvas>` animation — no animation library — that reflects real state: dim amber while idle, emerald while actively capturing a voice command, bright amber while the model is thinking, warm gold while it's speaking. It shows up on the Dashboard hero, the Chat empty-state, the "Working…" indicator, the voice toggle, and the login screen.
 
@@ -63,7 +66,7 @@ Scheduled, unattended prompts — "every morning summarize what changed in the r
 
 **Automations only ever get read-only tools** — `listDirectory`, `readFile`, `searchFiles`, `semanticSearch`, `gitStatus`/`gitDiff`/`gitLog`, `webFetch`/`webSearch`, `browserNavigate`/`browserGetText`/`browserScreenshot`, `getSystemStatus`. They never get `writeFile`, `editFile`, `runCommand`, `gitCommit`, or the interactive browser tools (`browserClick`/`browserType`/`browserPressKey`). This isn't a missing feature — it's deliberate: the whole tool-approval system (`lib/tool-approval-secret.ts`) assumes a human is present in the UI to click Approve, and there's no safe way to satisfy that gate when nothing is watching. If an automation's task genuinely needs to write or run something, it says so in its result instead of attempting it, and you do that step yourself in Chat.
 
-Schedules persist to `.omniai-schedules.json` at the project root (gitignored) and the scheduler loop survives dev-mode hot reloads via a `globalThis`-pinned timer.
+Schedules persist to `.omniai-schedules.json` at the project root (gitignored) and the scheduler loop survives dev-mode hot reloads via a `globalThis`-pinned timer. Each automation card also has **▶ Run now** (fires it immediately, headless, sharing the scheduler's concurrency guard), **⏸ Pause/Resume**, **✏️ Edit** (label, prompt, workspace, model, schedule), and a collapsible **run history** showing the last 10 executions. Paused automations are skipped by the scheduler.
 
 ## Models
 
@@ -101,17 +104,30 @@ OpenRouter, AIHubMix, and Requesty are all the same category of product (an Open
 5. Run the dev server: `npm run dev`
 6. Open [http://localhost:3000](http://localhost:3000)
 
+If you'll reach it through a tunnel rather than just on this machine, also set `OMNIAI_PASSWORD`
+in `.env.local` — see [Exposing it beyond localhost](#exposing-it-beyond-localhost-cloudflare-tunnel-etc).
+
 No API keys required for the local path — `lib/ollama.ts` points at your local Ollama server. Set `OLLAMA_BASE_URL` if it runs somewhere other than `localhost:11434`.
 
 ## Exposing it beyond localhost (Cloudflare Tunnel, etc.)
 
-By default this only listens on your machine. If you put it behind a tunnel (e.g. `cloudflared`) so it's reachable at a public domain, two things are required:
+By default this only listens on your machine. If you put it behind a tunnel (e.g. `cloudflared`) so it's reachable at a public domain:
 
-1. **A password.** Every route except `/login` and `POST /api/login` is gated by `proxy.ts` behind a shared password — set it in `.env.local`:
+1. **A password gate protects the hostname.** Requests from the machine itself (`localhost`/loopback)
+   are exempt — the app is designed around local access and stays password-free there, exactly as
+   before. Anything that arrives through the tunnel, though, must present a valid session cookie,
+   and getting one requires `OMNIAI_PASSWORD`:
    ```
    OMNIAI_PASSWORD=your-password-here
    ```
-   `.env.local` is gitignored and never committed. Without this set, `/api/login` refuses all logins (fails closed). There's a "Log out" button in the sidebar to clear the session cookie.
+   Set it in `.env.local` (gitignored, never committed). Without it, remote logins are refused
+   outright — an exposed-but-unconfigured server is locked, not open. When the gate redirects you
+   to `/login`, enter the password there; a **Log out** button appears in the sidebar (only when
+   the app is reached remotely) to clear the session.
+
+   The Android companion and the voice satellite don't use the password — they authenticate with
+   their own per-device bearer tokens and `VOICE_SATELLITE_SECRET`, and the gate is deliberately
+   set up to let those endpoints through.
 2. **`allowedDevOrigins`.** Since this runs via `next dev`, Next.js blocks cross-origin requests to the dev server by default. Add your tunnel's hostname to `next.config.ts`:
    ```ts
    const nextConfig: NextConfig = {
@@ -119,7 +135,10 @@ By default this only listens on your machine. If you put it behind a tunnel (e.g
    };
    ```
 
-Even with the password gate, remember this thing has real filesystem/shell/browser access to whatever "Workspace" is set to — only expose it to a domain you're not sharing around, and use a real password, not something guessable.
+Even with the gate, remember this thing has real filesystem/shell/browser access to whatever
+"Workspace" is set to — the password keeps strangers out, but anyone who has it can do everything
+the app can. Use a real password, not something guessable, and treat the hostname as a credential
+regardless.
 
 ## Notes
 

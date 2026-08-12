@@ -35,6 +35,41 @@ export const GESTURE_HELP = [
   "👎 Thumbs down — deny",
 ].join("  ·  ");
 
+// MediaPipe's WASM runtime pipes everything it prints — including INFO-level lines like
+// "Created TensorFlow Lite XNNPACK delegate for CPU." — through console.error, because
+// Emscripten maps stderr there. Next's dev overlay then reports a successful initialisation
+// as a Console Error.
+//
+// Only lines whose first argument literally begins with "INFO:" are dropped, so genuine
+// MediaPipe failures still reach the console untouched. Ref-counted and restored on cleanup:
+// React re-runs effects (twice in dev under Strict Mode), and naive save/restore would leave a
+// patched console.error permanently installed.
+let infoFilterDepth = 0;
+let unpatchedConsoleError: typeof console.error | null = null;
+
+function suppressMediapipeInfoLogs(): () => void {
+  if (infoFilterDepth === 0) {
+    const base = console.error;
+    unpatchedConsoleError = base;
+    console.error = (...args: unknown[]) => {
+      if (typeof args[0] === "string" && args[0].trimStart().startsWith("INFO:")) return;
+      base(...args);
+    };
+  }
+  infoFilterDepth += 1;
+
+  let released = false;
+  return () => {
+    if (released) return; // cleanup can fire more than once; don't double-decrement
+    released = true;
+    infoFilterDepth -= 1;
+    if (infoFilterDepth === 0 && unpatchedConsoleError) {
+      console.error = unpatchedConsoleError;
+      unpatchedConsoleError = null;
+    }
+  };
+}
+
 export function useGestureControl({
   enabled,
   onAction,
@@ -62,6 +97,9 @@ export function useGestureControl({
     if (!enabled) return;
 
     let cancelled = false;
+    // Installed before start() because the INFO line is emitted lazily, on the first
+    // recognizeForVideo call rather than at construction.
+    const releaseLogFilter = suppressMediapipeInfoLogs();
 
     async function start() {
       setInternalState("loading");
@@ -89,7 +127,13 @@ export function useGestureControl({
           numHands: 1,
         });
         if (cancelled) {
-          recognizer.close();
+          // The cleanup already may have closed it via the ref — close is idempotent but
+          // MediaPipe can throw on a raced double-close, so never let that escape.
+          try {
+            recognizer.close();
+          } catch {
+            // already closed
+          }
           return;
         }
         recognizerRef.current = recognizer;
@@ -143,9 +187,14 @@ export function useGestureControl({
 
     return () => {
       cancelled = true;
+      releaseLogFilter();
       if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
-      recognizerRef.current?.close();
+      try {
+        recognizerRef.current?.close();
+      } catch {
+        // already closed (e.g. by the in-flight start() cancelled branch)
+      }
       recognizerRef.current = null;
       streamRef.current?.getTracks().forEach((t) => t.stop());
       streamRef.current = null;

@@ -45,14 +45,14 @@ export function VoiceToggle({
         aria-label={enabled ? "Turn voice off" : "Turn voice on"}
         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-colors ${
           enabled
-            ? "border-amber-400/40 bg-amber-500/10"
-            : "border-white/10 bg-white/5 hover:bg-white/10"
+            ? "border-accent/40 bg-accent/10"
+            : "border-edge bg-surface hover:bg-edge"
         }`}
       >
         {enabled ? (
           <AiOrb state={toOrbState(state, ttsStatus)} size={26} />
         ) : (
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-zinc-400">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" className="text-fog">
             <rect x="6" y="1.5" width="4" height="7" rx="2" stroke="currentColor" strokeWidth="1.3" />
             <path
               d="M3.5 7.5a4.5 4.5 0 0 0 9 0M8 12v2.5"
@@ -64,7 +64,7 @@ export function VoiceToggle({
         )}
       </button>
       {enabled && (
-        <span className="hidden text-xs text-zinc-500 sm:inline">
+        <span className="hidden text-xs text-fog sm:inline">
           {label(state, ttsStatus, modelLoadPercent)}
         </span>
       )}

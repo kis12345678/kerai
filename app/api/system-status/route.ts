@@ -1,41 +1,8 @@
-import si from "systeminformation";
-import { getGpuStatus } from "@/lib/gpu-status";
+import { getSystemSnapshot } from "@/lib/system-snapshot";
 
+// Every probe inside the snapshot runs under its own timeout, so this endpoint has a hard upper
+// bound (roughly the slowest probe, ~4s for GPU) and always returns a complete shape — per-metric
+// failures come back as `null` value + reason in `errors`, never as a hung or broken request.
 export async function GET() {
-  const [battery, cpu, mem, currentLoad, osInfo, time, gpu] = await Promise.all([
-    si.battery(),
-    si.cpu(),
-    si.mem(),
-    si.currentLoad(),
-    si.osInfo(),
-    Promise.resolve(si.time()),
-    getGpuStatus(),
-  ]);
-
-  return Response.json({
-    battery: {
-      hasBattery: battery.hasBattery,
-      percent: battery.percent,
-      isCharging: battery.isCharging,
-      timeRemainingMin: battery.timeRemaining,
-    },
-    cpu: {
-      manufacturer: cpu.manufacturer,
-      brand: cpu.brand,
-      cores: cpu.cores,
-      loadPercent: Math.round(currentLoad.currentLoad),
-    },
-    memory: {
-      totalGb: Math.round((mem.total / 1024 ** 3) * 10) / 10,
-      usedGb: Math.round(((mem.total - mem.available) / 1024 ** 3) * 10) / 10,
-      usedPercent: Math.round(((mem.total - mem.available) / mem.total) * 100),
-    },
-    os: {
-      platform: osInfo.platform,
-      distro: osInfo.distro,
-      hostname: osInfo.hostname,
-    },
-    gpu,
-    uptimeSec: time.uptime,
-  });
+  return Response.json(await getSystemSnapshot());
 }
