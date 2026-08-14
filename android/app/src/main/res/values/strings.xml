@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">Kerai AI</string>
-    <string name="accessibility_description">Lets your Kerai AI assistant tap, type, read the screen, and take screenshots on this phone when you send it a task. Only accepts commands from the server you paired with using your device token.</string>
-</resources>

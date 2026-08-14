@@ -1,60 +1,14 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+bin/
+obj/
+.vs/
+node_modules/
+dist/
+.env
+.env.*
+*.user
+*.suo
+data/
+*.log
+*.err
+.claude/
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# self-signed origin CA + leaf (regenerate with `npm run certs`)
-/certs/
-
-# android app build output + machine-specific SDK path
-/android/.gradle/
-/android/build/
-/android/app/build/
-/android/local.properties
-
-# desktop (electron) app
-/desktop/node_modules/
-/desktop/dist/
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-.dev-server.log
-.dev-server.err
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# omniai runtime data (project memory, scheduled automations)
-/.omniai/
-.omniai-schedules.json
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts

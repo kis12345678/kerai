@@ -1,0 +1,95 @@
+/* KERAI design tokens — single source of truth for visual language. */
+
+:root {
+  /* ---- surfaces ---- */
+  --bg: #0b0d10;              /* app background: near-black charcoal */
+  --surface: #12161a;         /* panel surface */
+  --surface-2: #171c21;       /* hover / raised */
+  --surface-3: #1c2227;       /* active */
+  --inset: #0c0f12;           /* inputs inside panels */
+  --overlay: rgba(5, 7, 9, 0.66);
+
+  /* ---- borders ---- */
+  --border: #23282d;
+  --border-strong: #30373d;
+
+  /* ---- text ---- */
+  --text: #eef2f5;
+  --text-strong: #f8fafb;
+  --text-muted: #9ba5ad;
+  --text-faint: #66707a;
+
+  /* ---- accent (single KERAI accent: cyan/teal interface, blue/violet/magenta core) ---- */
+  --accent: #6fe3f5;
+  --accent-strong: #9df0fc;
+  --accent-ink: #062126;              /* text on accent fills */
+  --accent-dim: rgba(111, 227, 245, 0.10);
+  --accent-border: #1f5562;
+
+  /* ---- semantic ---- */
+  --success: #5fd08c;
+  --success-dim: rgba(95, 208, 140, 0.10);
+  --success-border: #2c5c42;
+  --warning: #e2b45c;
+  --warning-dim: rgba(226, 180, 92, 0.10);
+  --warning-border: #5c4a25;
+  --error: #e07070;
+  --error-dim: rgba(224, 112, 112, 0.10);
+  --error-border: #5c2e2e;
+  --info: #7fb4e8;
+  --info-dim: rgba(127, 180, 232, 0.10);
+  --info-border: #2e4a66;
+
+  /* ---- spacing scale (4px base) ---- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* ---- radius ---- */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-full: 999px;
+
+  /* ---- typography ---- */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --leading-tight: 1.25;
+  --leading-normal: 1.55;
+  --tracking-wide: 0.12em;
+  --tracking-wider: 0.18em;
+
+  /* ---- motion (subtle, state-communicating only) ---- */
+  --dur-fast: 110ms;
+  --dur: 170ms;
+  --dur-slow: 240ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ---- shadow ---- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 20px rgba(0, 0, 0, 0.42);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
+
+  /* ---- layout ---- */
+  --topbar-h: 56px;
+  --sidebar-w: 232px;
+  --content-max: 1180px;
+
+  /* ---- z-index scale ---- */
+  --z-dropdown: 40;
+  --z-tooltip: 50;
+  --z-modal: 60;
+  --z-toast: 70;
+}

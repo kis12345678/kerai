@@ -1,150 +1,117 @@
-# Kerai AI
+# KERAI
 
-A single local chat that auto-detects what you need — plain conversation, a full self-contained app built and previewed live, or real edits to a codebase on disk — running on your own GPU via [Ollama](https://ollama.com) by default, with zero API keys and zero cloud cost. A handful of things are opt-in cloud add-ons (see [Optional cloud integrations](#optional-cloud-integrations)) — everything else stays local unless you deliberately turn one of those on.
+A local-first AI operating environment. Tell KERAI what to accomplish — it plans,
+requests approval for changes, executes through controlled tools, verifies the
+result, and reports back. Voice is a first-class interface: the Neural Core on
+the home screen is an audio-reactive procedural energy ring driven by the real
+microphone and KERAI's own speech.
 
-## How it works
+The UI is a replaceable control surface; the .NET runtime remains the source of
+truth for missions, tools, permissions, approvals, execution, and verification.
+The model may propose a plan, but runtime contracts validate paths, risk,
+approval, execution, and verification — the LLM is never the security boundary.
 
-Chat is a docked panel available from every screen (see [Layout](#layout) below). There's no mode switcher — the model itself decides, per message, what to do:
+## Architecture
 
-- **Just answer** — questions, explanations, brainstorming.
-- **Build an app** — asked to build/make something, it writes one complete, self-contained HTML file (inline CSS/JS, no build step) with `writeFile`. The transcript shows a live iframe preview (and a Code tab) right where the tool call happened, both before you approve the write and after.
-- **Work in a real codebase** — it can `listDirectory`/`readFile`/`searchFiles` freely to explore (plus `semanticSearch`, which builds a local embeddings index via Ollama's `nomic-embed-text` the first time it's used, for finding conceptually related code when you don't know the exact string), and `writeFile`/`editFile`/`runCommand` to make changes. It also has `gitStatus`/`gitDiff`/`gitLog` to inspect repo state freely and `gitCommit` to stage and commit. Point the "Workspace" field at any project on disk, including this one.
-- **Look things up or act on the web** — `webFetch` reads a URL's content you already know (docs, API references, error messages). `webSearch` (only present when `TAVILY_API_KEY` is set — see below) actually searches the web via [Tavily](https://tavily.com) when you don't know the exact URL. For pages that need real JavaScript rendering, logins, or clicking through a flow, it can drive an actual persistent headless Chromium session via `browserNavigate`/`browserGetText`/`browserScreenshot`/`browserClick`/`browserType`/`browserPressKey`.
-- **Act on your desktop** — `getLocalTime` answers anything date/time-dependent (your training data doesn't know what time it is). `readClipboard` grabs text you copied elsewhere ("summarize what I just copied"), `writeClipboard` copies text to your clipboard, and `openInBrowser` opens a URL in your real, visible default browser (approval-gated, http(s) only).
+```
+apps/control-surface        React + TypeScript control surface (no agent intelligence)
+src/Kerai.Contracts         shared contracts (missions, tools, approvals, events, automations)
+src/Kerai.Runtime           deterministic mission transitions, tool registry, permissions,
+                            workspace confinement, verifier/recovery, automation rules
+src/Kerai.Storage           SQLite (data/kerai.db, WAL) — the single shared source of truth
+src/Kerai.Server            ASP.NET Core gateway: REST API + WebSocket event stream
+src/Kerai.Worker            the execution authority: claims missions, runs the agent,
+                            fires due automations
+tests/Kerai.Runtime.Tests   runtime, security-boundary, persistence, and scheduling tests
+```
 
-`writeFile`, `editFile`, `runCommand`, `gitCommit`, and the interactive browser tools (`browserClick`/`browserType`/`browserPressKey`) each require your explicit approval before they execute, shown right in the transcript (Claude Code/Codex-style permission prompts). Read-only tools (`listDirectory`, `readFile`, `searchFiles`, `semanticSearch`, `gitStatus`, `gitDiff`, `gitLog`, `webFetch`, `webSearch`, `browserNavigate`, `browserGetText`, `browserScreenshot`, `getSystemStatus`) run without asking.
+Two processes share one SQLite database. The **Server** is API + WebSocket only;
+the **Worker** atomically claims the next runnable mission (Created, or
+WaitingForApproval whose approval was granted) and executes it through the agent.
+Restarting either process loses nothing.
 
-The model can also keep a persistent project memory: notes it writes to `.omniai/memory.md` in the workspace (conventions, past decisions, your stated preferences) are re-loaded into its system prompt on every future chat against that workspace. The `semanticSearch` embeddings cache lives alongside it at `.omniai/embeddings-index.json`.
+## Features
 
-A **Stop** button appears next to "Working…" (and next to "Speaking…" in voice mode) whenever a response is in flight — it cancels the streaming request and halts any TTS playback immediately, covering both the text and voice cases with one control. Replies render with lightweight markdown (code blocks, inline code, bold/italic, links, lists, headings) so model output is readable, and every message has hover actions: **Copy** to copy its text, and **Regenerate** on the latest reply to redo it.
+- **Command Center (Home)** — KERAI Neural Core (cinematic blue→violet→magenta
+  energy ring, one renderer for all seven states: idle, listening, thinking,
+  speaking, executing, waitingApproval, error), command input, live mission
+  panel, compact readiness strip. Telemetry lives on the System page.
+- **Voice (Phase C)** — microphone → Web Audio analyzer → live drive into the
+  Neural Core (LISTENING reacts to your actual voice); speech-to-text fills and
+  submits commands (Chrome/Edge; falls back to mic-only animation elsewhere);
+  KERAI speaks mission results through local system TTS (SPEAKING reacts to
+  real utterance boundaries); "stop"/"cancel" spoken while listening halts TTS
+  or the active mission. Local-first: the analyzer and TTS never leave the
+  machine; only Chrome's SpeechRecognition touches the network, and the
+  `IAudioInput`/`ITtsProvider` contracts let a fully local engine replace it.
+- **Missions** — Created → Running → WaitingForApproval → Verifying →
+  Completed (or Failed/Cancelled), with bounded recovery (2 retries max) and a
+  live step checklist streamed over WebSocket.
+- **Tool registry** — every capability is a tool with a real JSON schema, risk
+  level, approval requirement, timeout, and verification. Filesystem (confined
+  to the approved workspace), `dotnet.build`/`dotnet.test`, `git.status`/`git.diff`,
+  workspace inspection, and the **Computer agent** (open/close applications,
+  list processes, window focus/minimize/maximize, open URLs, clipboard) —
+  Windows-native actions, no raw shell anywhere.
+- **Specialist lanes** — missions run in a lane (Master, Coder, Computer) that
+  scopes the tools the model may call. The **Coder agent** discovers and analyzes
+  projects (`workspace.inspect`, `project.analyze`), searches code
+  (`code.search`), reads and edits files, runs `dotnet.build`/`dotnet.test`, and
+  verifies with git — while the **Computer agent** is limited to `computer.*`
+  tools. Lanes are scope, not a second engine: permissions, execution, and
+  verification are identical for every lane.
+- **Multi-agent (Milestone 10)** — the **Master** delegates focused work to
+  specialist sub-agents with `submission.dispatch` (lane: Coder or Computer). Each
+  dispatch creates a real sub-mission (`ParentMissionId`) that runs nested through
+  the same permission pipeline, verifier, and recovery — its privileged actions
+  still require approval, so delegation grants no new capability. Sub-missions
+  show up in Missions with a `↳ sub-mission` badge and in the activity trail.
+- **Permission engine** — approval is tied to the exact operation; changing an
+  argument requires a new approval. Risk levels Read/Safe/Modify/System/Critical.
+- **Automations** — scheduled missions (every N minutes or daily at HH:MM),
+  persisted in SQLite and fired by the Worker. Firing only *creates a mission*,
+  which runs through the exact same permission pipeline — automations can never
+  silently gain permissions.
+- **Memory** — inspectable, searchable, removable task memory (missions, event
+  trail, approvals). "Forget all" never touches active missions.
+- **Workspace** — read-only inspection of the confined root (entries, counts,
+  git/.sln/manifest detection).
+- **System** — real CPU/RAM/GPU/VRAM/storage telemetry with independent
+  per-source health (one failed GPU probe never makes the whole core look dead),
+  background-sampled so the API never blocks.
+- **Models** — dynamic Ollama detection; the selected model drives real inference.
+- **Activity** — the operational audit trail (never hidden chain-of-thought).
 
-Long-running sessions are compacted automatically (`lib/history-compaction.ts`): once a conversation's total size passes a rough character budget (~120k, a proxy for tokens, checked before every request), the oldest messages are dropped to keep it under that budget — never splitting a message internally, since a tool call and its result always live together as parts of one message in this SDK's format. This happens server-side, silently, and doesn't touch what's shown in your sidebar or saved to `localStorage` — only what's actually sent to the model on the next request.
+## Run
 
-## Voice mode
+```bash
+dotnet build Kerai.sln
+dotnet test Kerai.sln            # 36 tests: persistence, atomic claim, permissions,
+                                 # verification/recovery, automations, workspace, memory,
+                                 # multi-agent dispatch
+cd apps/control-surface
+npm install
+npm run build                    # or `npm run dev` for the dev server (http://localhost:5173)
+```
 
-Click the mic icon in the chat header to talk to it instead of typing. It listens continuously for the wake word **"Jarvis"**, captures whatever you say right after (until you pause), sends that as your message, and speaks the reply back once it finishes.
+Start both processes (order doesn't matter — state is shared):
 
-- **Wake word + transcription run fully locally by default** — [`@ricky0123/vad-web`](https://github.com/ricky0123/vad) (Silero VAD, ONNX/WASM) cheaply detects when you start/stop talking, and only that speech segment is transcribed by a local Whisper model ([`Xenova/whisper-tiny.en`](https://huggingface.co/Xenova/whisper-tiny.en) via Transformers.js). No audio ever leaves the machine. There's a real UX tradeoff versus a native engine: there's no live "interim results," so whether the wake word was said isn't known until a beat after you finish the phrase (VAD's silence padding plus a Whisper pass on a few seconds of audio).
-  - A "Listen: Local / Listen: Fast (cloud)" toggle appears next to the mic when the browser's built-in `SpeechRecognition` is available (Chrome/Edge only). Switching to Fast trades the local guarantee for a snappier, more accurate native engine — but Chrome sends that audio to Google's speech service to transcribe it.
-- **Replies are spoken by a real local neural TTS model** ([Kokoro-82M](https://github.com/hexgrad/kokoro), via [`kokoro-js`](https://www.npmjs.com/package/kokoro-js)/Transformers.js), not the browser's robotic built-in `speechSynthesis`. It runs entirely client-side via ONNX/WASM — the ~tens-of-MB model weights are fetched once from the Hugging Face CDN on first use and cached by the browser after (the one piece of "cloud" involved, same idea as `ollama pull` — a one-time download, not a per-request call). Every actual generation after that runs 100% offline; your text never leaves the machine.
-  - First use shows a "Loading voice… N%" progress readout while either the STT or TTS model downloads; after that, generation is a second or two per reply, running on CPU (WASM) so it works on any machine without needing WebGPU.
-- The mic pauses itself while the assistant is thinking, generating, or speaking, so it doesn't pick up its own voice or your next command mid-response.
-- Needs a real, user-granted microphone permission — the browser will prompt the first time you turn it on.
-- **Optional: faster, more human-sounding cloud voice.** If `GROQ_API_KEY` is set (see below), a "Voice: Local / Voice: Fast (cloud)" toggle appears next to the mic. Switching it to Fast routes replies through [Groq's Orpheus TTS](https://console.groq.com/docs/text-to-speech) — near-instant, more natural-sounding, but your reply text leaves the machine per request. Local stays the default either way.
+```bash
+dotnet run --project src/Kerai.Server   # gateway, binds 0.0.0.0:5071 (override with --urls)
+dotnet run --project src/Kerai.Worker   # execution authority + automation scheduler
+```
 
-## Gesture control
+The control surface resolves the API from the page host (no hardcoded localhost);
+set `VITE_KERAI_API` to override. Ollama is optional and expected at
+`http://127.0.0.1:11434`. Computer-app names resolve via built-in mappings,
+`data/apps.json`, or the `KERAI_APPS` env var.
 
-Click "✋ Gestures" in the chat header to drive a few real actions with your hand instead of the keyboard, via your webcam:
+## Honest boundaries
 
-- ✋ **Open palm** — stop (interrupts a response and/or TTS playback, same as the Stop button)
-- ✊ **Fist** — toggle the mic on/off
-- 👍 **Thumbs up** — approve a pending tool-call approval
-- 👎 **Thumbs down** — deny a pending tool-call approval
-
-Runs fully in-browser via [MediaPipe Tasks Vision](https://ai.google.dev/edge/mediapipe/solutions/vision/gesture_recognizer)'s pretrained gesture recognizer (WASM, no API key) — no video frame is ever sent anywhere. A small preview thumbnail appears next to the toggle with a live label of whatever's currently recognized, so you can see it working (or not) and adjust hand position/lighting. A gesture has to be held steady for a handful of frames before it fires, and there's a ~1.5s cooldown per action, so a held pose doesn't repeat-fire.
-
-Needs a webcam and a secure context (same constraint as the mic — `localhost` or HTTPS). Like voice, it's off by default each session and only requests camera access once you turn it on.
-
-## Installing as an app
-
-Kerai AI is installable as a standalone PWA (`app/manifest.ts`) — look for the install icon in your browser's address bar, or "Install app" in the menu. It launches without browser chrome, like a native app, so it feels less like "a tab you bookmarked" and more like Jarvis is actually running on your machine. The manifest and its icon (`public/icon.svg`) are deliberately excluded from the login gate in `proxy.ts` — browsers fetch them unauthenticated to decide whether to offer the install prompt, and neither file contains anything sensitive.
-
-## Layout
-
-Logging in takes you straight to **Dashboard** — live stats read straight from the OS (no cloud call, no external service): battery %, CPU load, memory usage, GPU utilization/VRAM/temperature/power, and uptime. Refreshes every 5s. The same data is exposed to the model as a tool, `getSystemStatus` — ask it "what's my battery," "how much RAM am I using," or "how hot is my GPU" and it answers from a live snapshot, not a guess.
-  - CPU/memory/battery come from [`systeminformation`](https://systeminformation.io/). GPU stats prefer `nvidia-smi` when present (real utilization %, temp, power draw — `systeminformation` can't read live NVIDIA utilization on Windows), falling back to `systeminformation`'s cross-vendor reader (model + VRAM only, no utilization) for AMD/Intel-only machines or if `nvidia-smi` isn't on PATH.
-
-The sidebar has two page tabs — **Dashboard** and **Automations** — plus a **Chat panel** that isn't a page at all: it's a docked column on the right, toggleable from the sidebar ("💬 Open/Close chat panel") or the floating 💬 button that appears once it's closed. Because it's mounted once at the layout level rather than per-page, it keeps its conversation, scroll position, and in-progress draft as you move between Dashboard and Automations — closing it only hides it, it doesn't reset anything. On narrow/mobile screens it takes over the full screen instead of docking, since 420px wouldn't leave room for anything else.
-
-The History panel lets you search your conversations, rename them (double-click or ✏️), and export any of them — or the active one via the ⬇️ Export button in the chat header — as a standalone Markdown file.
-
-The glowing orb (`components/ai-orb.tsx`) is a plain `<canvas>` animation — no animation library — that reflects real state: dim amber while idle, emerald while actively capturing a voice command, bright amber while the model is thinking, warm gold while it's speaking. It shows up on the Dashboard hero, the Chat empty-state, the "Working…" indicator, the voice toggle, and the login screen.
-
-## Automations
-
-Scheduled, unattended prompts — "every morning summarize what changed in the repo," "every hour check if X." Create one from the Automations tab: a label, a prompt, a workspace root, a model, and either "daily at HH:MM" or "every N minutes." A background scheduler (`lib/automation-scheduler.ts`) checks once a minute and fires anything due, running it headlessly via `generateText` (`lib/automation-runner.ts`) and logging the result (or error) back onto the automation entry, visible on the same page.
-
-**Automations only ever get read-only tools** — `listDirectory`, `readFile`, `searchFiles`, `semanticSearch`, `gitStatus`/`gitDiff`/`gitLog`, `webFetch`/`webSearch`, `browserNavigate`/`browserGetText`/`browserScreenshot`, `getSystemStatus`. They never get `writeFile`, `editFile`, `runCommand`, `gitCommit`, or the interactive browser tools (`browserClick`/`browserType`/`browserPressKey`). This isn't a missing feature — it's deliberate: the whole tool-approval system (`lib/tool-approval-secret.ts`) assumes a human is present in the UI to click Approve, and there's no safe way to satisfy that gate when nothing is watching. If an automation's task genuinely needs to write or run something, it says so in its result instead of attempting it, and you do that step yourself in Chat.
-
-Schedules persist to `.omniai-schedules.json` at the project root (gitignored) and the scheduler loop survives dev-mode hot reloads via a `globalThis`-pinned timer. Each automation card also has **▶ Run now** (fires it immediately, headless, sharing the scheduler's concurrency guard), **⏸ Pause/Resume**, **✏️ Edit** (label, prompt, workspace, model, schedule), and a collapsible **run history** showing the last 10 executions. Paused automations are skipped by the scheduler.
-
-## Models
-
-By default all models run locally through Ollama (`localhost:11434`). Since tools (filesystem, shell, app-building) are always available in the same chat, every local model in the picker must support reliable tool/function calling — reasoning-only models like DeepSeek R1 are intentionally left out.
-
-- **GPT-OSS Agent 13B** (default) — OpenAI's open-weight model tuned for agentic tool use
-- **GPT-OSS 20B**, **Devstral 24B**, **Qwen3 30B**, **GLM-4.7 Flash**, **Qwen3 Coder 30B**
-
-Pull any of these with `ollama pull <name>` if you don't already have them (check with `ollama list`).
-
-> **Note on tool-calling reliability:** some models (notably `qwen3-coder:30b` in local testing, despite being marketed for agentic coding) intermittently emit their native `<function=...>` text syntax instead of a real structured tool call when given this app's full tool set — Ollama/llama.cpp's OpenAI-compatible tool-calling support varies by model and quantization. `gpt-oss-agent:latest` and `gpt-oss:20b` tested reliably (3/3) and are ordered first; if you switch models and see it "narrate" a function call as plain text instead of acting, switch back to one of those two.
-
-The picker also shows a **"Cloud (leaves the machine)"** group when any cloud provider key is configured — see [Optional cloud integrations](#optional-cloud-integrations).
-
-## Optional cloud integrations
-
-None of these are required — the app is fully usable with zero of them set. Each is independently gated: if its env var is absent, the corresponding feature/tool/menu entry simply doesn't appear, rather than erroring. Add keys to `.env.local` (gitignored, never committed) — paste values directly into the file yourself, not into a chat with an AI assistant that might log them.
-
-| Env var | Unlocks | Docs |
-|---|---|---|
-| `GROQ_API_KEY` | "Voice: Fast (cloud)" toggle next to the mic — near-instant, natural TTS via Groq's Orpheus model, opt-in per the toggle | [console.groq.com/docs/text-to-speech](https://console.groq.com/docs/text-to-speech) |
-| `TAVILY_API_KEY` | The `webSearch` tool — real, live web search (vs. `webFetch`'s "fetch a URL I already know") | [docs.tavily.com](https://docs.tavily.com) |
-| `OPENROUTER_API_KEY` | "GPT-4o mini (OpenRouter)" in the model picker's Cloud group | [openrouter.ai/docs](https://openrouter.ai/docs) |
-| `AIHUBMIX_API_KEY` | "GPT-4o mini (AIHubMix)" in the model picker's Cloud group | [docs.aihubmix.com](https://docs.aihubmix.com) |
-| `REQUESTY_API_KEY` | "GPT-4o mini (Requesty)" in the model picker's Cloud group | [docs.requesty.ai](https://docs.requesty.ai) |
-
-OpenRouter, AIHubMix, and Requesty are all the same category of product (an OpenAI-compatible gateway to many cloud models) — wired up as three independent options because that's what was asked for, not because you need all three. Pick whichever you actually have credit on; `lib/cloud-providers.ts` is where to add or remove one. Selecting a cloud model in the picker sends that conversation's messages to that provider — the system prompt tells the model this explicitly so it doesn't claim to be fully local when it isn't.
-
-## Getting started
-
-1. Make sure Ollama is running (it starts automatically on Windows once installed).
-2. Install dependencies: `npm install`
-3. Install the browser used by the browser tools: `npx playwright install chromium`
-4. If you want `semanticSearch` to work, pull its embedding model: `ollama pull nomic-embed-text`
-5. Run the dev server: `npm run dev`
-6. Open [http://localhost:3000](http://localhost:3000)
-
-If you'll reach it through a tunnel rather than just on this machine, also set `OMNIAI_PASSWORD`
-in `.env.local` — see [Exposing it beyond localhost](#exposing-it-beyond-localhost-cloudflare-tunnel-etc).
-
-No API keys required for the local path — `lib/ollama.ts` points at your local Ollama server. Set `OLLAMA_BASE_URL` if it runs somewhere other than `localhost:11434`.
-
-## Exposing it beyond localhost (Cloudflare Tunnel, etc.)
-
-By default this only listens on your machine. If you put it behind a tunnel (e.g. `cloudflared`) so it's reachable at a public domain:
-
-1. **A password gate protects the hostname.** Requests from the machine itself (`localhost`/loopback)
-   are exempt — the app is designed around local access and stays password-free there, exactly as
-   before. Anything that arrives through the tunnel, though, must present a valid session cookie,
-   and getting one requires `OMNIAI_PASSWORD`:
-   ```
-   OMNIAI_PASSWORD=your-password-here
-   ```
-   Set it in `.env.local` (gitignored, never committed). Without it, remote logins are refused
-   outright — an exposed-but-unconfigured server is locked, not open. When the gate redirects you
-   to `/login`, enter the password there; a **Log out** button appears in the sidebar (only when
-   the app is reached remotely) to clear the session.
-
-   The Android companion and the voice satellite don't use the password — they authenticate with
-   their own per-device bearer tokens and `VOICE_SATELLITE_SECRET`, and the gate is deliberately
-   set up to let those endpoints through.
-2. **`allowedDevOrigins`.** Since this runs via `next dev`, Next.js blocks cross-origin requests to the dev server by default. Add your tunnel's hostname to `next.config.ts`:
-   ```ts
-   const nextConfig: NextConfig = {
-     allowedDevOrigins: ["your-domain.example.com"],
-   };
-   ```
-
-Even with the gate, remember this thing has real filesystem/shell/browser access to whatever
-"Workspace" is set to — the password keeps strangers out, but anyone who has it can do everything
-the app can. Use a real password, not something guessable, and treat the hostname as a credential
-regardless.
-
-## Notes
-
-- This app talks to `localhost:11434`, so it needs to run on the same machine as Ollama (or one with network access to it). It is **not** deployable to a cloud host like Vercel as-is — Vercel's servers can't reach your local GPU.
-- Generated apps are plain, dependency-free HTML/CSS/JS written straight into the workspace, so they're portable — open the file or copy it out and deploy it elsewhere freely.
-- `writeFile`/`editFile`/`runCommand` are confined to the chosen workspace directory (path traversal outside it is rejected), but `runCommand` still executes whatever shell command the model proposes — that's exactly why it's approval-gated. Read a command before approving it, the same way you would in Claude Code or Codex CLI.
-- The browser tools drive one persistent headless Chromium session per server process (kept alive across tool calls so navigate → click → read stays one continuous flow), not a sandboxed one-off per call — treat `browserClick`/`browserType`/`browserPressKey` with the same care as `runCommand`.
-- `gitCommit` runs `git add -A` by default before committing, so review `gitStatus`/`gitDiff` first if you only want specific files staged.
-- The approval gate on `writeFile`/`runCommand`/etc. protects against the *model* acting unilaterally — it does not distinguish between you and anyone else who has the page open. Anyone who reaches the app (i.e. anyone with the password, once you've exposed it beyond localhost) can approve their own tool calls.
+- Automation-fired missions that need privileged tools still wait for your
+  approval — that is deliberate, not a missing feature.
+- Some browsers (Chrome) relaunch themselves after being closed (session
+  restore); the tool verifies truthfully at execution time.
+- SpeechRecognition (Chrome/Edge) routes audio to the browser vendor's speech
+  service; everything else in the voice pipeline is local. The provider
+  interfaces are shaped for a fully local engine later.
