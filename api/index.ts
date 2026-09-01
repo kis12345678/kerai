@@ -5,8 +5,16 @@ import { createClient, type Client } from "@libsql/client";
 // ── Turso Client ───────────────────────────────────────────────
 
 let _client: Client | null = null;
+const HAS_DB = !!process.env.TURSO_DATABASE_URL;
+
+// Mock client that returns empty results when no DB is configured
+const _mockClient = {
+  execute: async () => ({ rows: [], columns: [], rowsAffected: 0, lastInsertRowid: 0 }),
+  batch: async () => ({ rows: [], columns: [], rowsAffected: 0, lastInsertRowid: 0 }),
+} as unknown as Client;
 
 function getClient(): Client {
+  if (!HAS_DB) return _mockClient;
   if (!_client) {
     _client = createClient({
       url: process.env.TURSO_DATABASE_URL!,
@@ -76,6 +84,7 @@ let _schemaReady = false;
 
 async function ensureSchema() {
   if (_schemaReady) return;
+  if (!HAS_DB) { _schemaReady = true; return; }
   const client = getClient();
   const statements = SCHEMA.split(";").map((s) => s.trim()).filter((s) => s.length > 0);
   for (const sql of statements) {
@@ -97,7 +106,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Middleware: ensure DB schema on first request
 app.use(async (_req, _res, next) => {
-  try { await ensureSchema(); } catch (e) { console.error("[DB] Schema init error:", e); }
+  try { await ensureSchema(); } catch { /* no DB configured, mock will handle */ }
   next();
 });
 
@@ -126,14 +135,13 @@ let _bootTime = Date.now();
 // ── Health ─────────────────────────────────────────────────────
 
 app.get("/api/ping", (_req, res) => {
-  res.json({ message: "kerai online", timestamp: new Date().toISOString(), backend: "turso" });
+  res.json({ message: "kerai online", timestamp: new Date().toISOString(), backend: HAS_DB ? "turso" : "mock" });
 });
 
 app.get("/api/status", async (_req, res) => {
-  const client = getClient();
   let eventCount = 0;
   try {
-    const r = await client.execute("SELECT COUNT(*) as cnt FROM events");
+    const r = await getClient().execute("SELECT COUNT(*) as cnt FROM events");
     eventCount = Number(r.rows[0]?.cnt ?? 0);
   } catch { /* ignore */ }
   res.json({
@@ -141,7 +149,7 @@ app.get("/api/status", async (_req, res) => {
     cpu: 0, memory: 0,
     geminiConfigured: !!process.env.GEMINI_API_KEY,
     toolCount: 29, activeProvider: "gemini",
-    backend: "turso", eventCount,
+    backend: HAS_DB ? "turso" : "mock", eventCount,
     availableProviders: [
       { provider: "gemini", available: !!process.env.GEMINI_API_KEY },
       { provider: "openai", available: !!process.env.OPENAI_API_KEY },
