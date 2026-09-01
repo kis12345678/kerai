@@ -558,7 +558,7 @@ app.get("/api/microsoft/status", (_req, res) => { res.json({ connected: false })
 
 // ── Fallback ───────────────────────────────────────────────────
 
-app.all("/api/:path+", (_req, res) => { res.status(404).json({ error: "API endpoint not found" }); });
+app.all("/api/{*rest}", (_req, res) => { res.status(404).json({ error: "API endpoint not found" }); });
 
 // ── Reply helper ───────────────────────────────────────────────
 
