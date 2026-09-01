@@ -1,7 +1,6 @@
 import { defineConfig, Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import path from "node:path";
-import { createServer, initKerai } from "./server/index.js";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
@@ -40,7 +39,10 @@ function expressPlugin(): Plugin {
   return {
     name: "express-plugin",
     apply: "serve", // Only apply during development (serve mode)
-    configureServer(server) {
+    async configureServer(server) {
+      // Dynamic import so the server module (with native deps like better-sqlite3)
+      // is NOT loaded during `vite build` on Vercel — only during dev.
+      const { createServer, initKerai } = await import("./server/index.js");
       const app = createServer();
       initKerai(); // Initialize KERAI core systems
 
