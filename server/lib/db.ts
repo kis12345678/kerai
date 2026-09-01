@@ -200,9 +200,11 @@ function getLocalDb(): any {
   if (!localDb) {
     // Dynamic import to avoid crashing when better-sqlite3 isn't needed
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const Database = require("better-sqlite3");
-    const path = require("node:path");
-    const fs = require("node:fs");
+    const { createRequire } = require("node:module") as typeof import("node:module");
+    const require_ = createRequire(import.meta.url);
+    const Database = require_("better-sqlite3");
+    const path = require_("node:path");
+    const fs = require_("node:fs");
 
     const DB_PATH = path.resolve(import.meta.dirname || __dirname, "../../data/kerai.db");
     const dataDir = path.dirname(DB_PATH);

@@ -30,6 +30,7 @@ import { handleNotificationsList, handleNotificationsUnreadCount, handleNotifica
 import { handleAgentSystem, handleAgentCpu, handleAgentDisks, handleAgentNetwork, handleAgentProcesses, handleAgentKillProcess, handleAgentWindows, handleAgentFocusWindow, handleAgentOpenApp, handleAgentPowerShell, handleAgentReadFile, handleAgentListDir } from "./routes/agent.js";
 import { handleGoogleStatus, handleGoogleAuthUrl, handleGoogleCallback, handleGoogleDisconnect, handleGmailList, handleGmailRead, handleCalendarList, handleDriveList, handleDocsRead, handleSheetsRead } from "./routes/google.js";
 import { handleMicrosoftStatus, handleMicrosoftAuthUrl, handleMicrosoftCallback, handleMicrosoftDisconnect, handleOutlookList, handleOutlookRead, handleMicrosoftCalendarList, handleOneDriveList, handleExcelRead, handleTeamsList } from "./routes/microsoft.js";
+import { handleBrowserStatus, handleBrowserNavigate, handleBrowserInfo, handleBrowserExtract, handleBrowserSearch, handleBrowserClick, handleBrowserType, handleBrowserFill, handleBrowserElements, handleBrowserScreenshot, handleBrowserScript, handleBrowserScroll, handleBrowserWait, handleBrowserBack, handleBrowserForward, handleBrowserClose } from "./routes/browser.js";
 import { registerBuiltinTools } from "./lib/builtin-tools.js";
 import { eventBus } from "./lib/events.js";
 import { llmRouter } from "./lib/llm-router.js";
@@ -226,6 +227,24 @@ export function createServer() {
   app.get("/api/microsoft/onedrive/files", handleOneDriveList);
   app.get("/api/microsoft/excel/:fileId", handleExcelRead);
   app.get("/api/microsoft/teams", handleTeamsList);
+
+  // ── Browser Automation (Phase 11) ───────────────────────
+  app.get("/api/browser/status", handleBrowserStatus);
+  app.post("/api/browser/navigate", handleBrowserNavigate);
+  app.get("/api/browser/info", handleBrowserInfo);
+  app.get("/api/browser/extract", handleBrowserExtract);
+  app.post("/api/browser/search", handleBrowserSearch);
+  app.post("/api/browser/click", handleBrowserClick);
+  app.post("/api/browser/type", handleBrowserType);
+  app.post("/api/browser/fill", handleBrowserFill);
+  app.get("/api/browser/elements", handleBrowserElements);
+  app.post("/api/browser/screenshot", handleBrowserScreenshot);
+  app.post("/api/browser/script", handleBrowserScript);
+  app.post("/api/browser/scroll", handleBrowserScroll);
+  app.post("/api/browser/wait", handleBrowserWait);
+  app.post("/api/browser/back", handleBrowserBack);
+  app.post("/api/browser/forward", handleBrowserForward);
+  app.post("/api/browser/close", handleBrowserClose);
 
   return app;
 }

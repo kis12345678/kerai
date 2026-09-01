@@ -540,6 +540,14 @@ const TOOLS = [
   { name: "microsoft.outlook.list", description: "List Outlook emails", category: "email", permissionLevel: 1, provider: "microsoft", enabled: !!process.env.MICROSOFT_CLIENT_ID },
   { name: "microsoft.calendar.list", description: "List calendar events", category: "calendar", permissionLevel: 1, provider: "microsoft", enabled: !!process.env.MICROSOFT_CLIENT_ID },
   { name: "microsoft.onedrive.list", description: "List OneDrive files", category: "files", permissionLevel: 1, provider: "microsoft", enabled: !!process.env.MICROSOFT_CLIENT_ID },
+  { name: "browser.navigate", description: "Navigate to a URL", category: "browser", permissionLevel: 1, provider: "local", enabled: true },
+  { name: "browser.search", description: "Search the web (Google/Bing/DuckDuckGo)", category: "browser", permissionLevel: 1, provider: "local", enabled: true },
+  { name: "browser.extract", description: "Extract content from current page", category: "browser", permissionLevel: 0, provider: "local", enabled: true },
+  { name: "browser.click", description: "Click an element by CSS selector", category: "browser", permissionLevel: 1, provider: "local", enabled: true },
+  { name: "browser.type", description: "Type text into an input field", category: "browser", permissionLevel: 1, provider: "local", enabled: true },
+  { name: "browser.screenshot", description: "Take a screenshot of the page", category: "browser", permissionLevel: 1, provider: "local", enabled: true },
+  { name: "browser.elements", description: "List interactive elements on page", category: "browser", permissionLevel: 0, provider: "local", enabled: true },
+  { name: "browser.close", description: "Close the browser", category: "browser", permissionLevel: 0, provider: "local", enabled: true },
 ];
 
 app.get("/api/tools", (_req, res) => {
@@ -563,6 +571,11 @@ app.get("/api/agent/network", (_req, res) => { res.json({ hostname: "vercel", pl
 
 app.get("/api/google/status", (_req, res) => { res.json({ connected: false }); });
 app.get("/api/microsoft/status", (_req, res) => { res.json({ connected: false }); });
+
+// ── Browser (stub for Vercel — use local dev for full automation) ──
+app.get("/api/browser/status", (_req, res) => {
+  res.json({ running: false, currentUrl: null, capabilities: ["navigate", "search", "extract", "click", "type", "screenshot", "script", "scroll", "elements"], note: "Browser automation available on local dev. Deploy locally or use a browser-as-a-service for Vercel." });
+});
 
 // ── Fallback ───────────────────────────────────────────────────
 

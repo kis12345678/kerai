@@ -783,6 +783,179 @@ export function registerBuiltinTools(): void {
     return googleConnector.sheetsReadSpreadsheet("default", id, range);
   });
 
+  // ── Browser Automation Tools ───────────────────────────────
+
+  registerTool({
+    name: "browser.navigate",
+    description: "Navigate to a URL in the browser",
+    category: "browser",
+    inputSchema: { url: { type: "string", description: "URL to navigate to" } },
+    outputSchema: { title: "string", url: "string", status: "number" },
+    permissionLevel: 1,
+    riskLevel: "low",
+    requiresConfirmation: false,
+    provider: "local",
+    enabled: true,
+    timeout: 30000,
+    retryCount: 0,
+  }, async (input) => {
+    const { navigate } = await import("./browser.js");
+    return navigate(input.url as string);
+  });
+
+  registerTool({
+    name: "browser.search",
+    description: "Search the web using Google, Bing, or DuckDuckGo",
+    category: "browser",
+    inputSchema: {
+      query: { type: "string", description: "Search query" },
+      engine: { type: "string", description: "Search engine: google, bing, duckduckgo (default: google)" },
+      maxResults: { type: "number", description: "Max results (default 10)" },
+    },
+    outputSchema: { results: "array", total: "number" },
+    permissionLevel: 1,
+    riskLevel: "low",
+    requiresConfirmation: false,
+    provider: "local",
+    enabled: true,
+    timeout: 30000,
+    retryCount: 0,
+  }, async (input) => {
+    const { searchWeb } = await import("./browser.js");
+    const results = await searchWeb(
+      input.query as string,
+      (input.engine as any) || "google",
+      (input.maxResults as number) || 10
+    );
+    return { query: input.query, engine: input.engine || "google", results, total: results.length };
+  });
+
+  registerTool({
+    name: "browser.extract",
+    description: "Extract content (text, links, images, headings) from the current page",
+    category: "browser",
+    inputSchema: { maxLength: { type: "number", description: "Max text length (default 50000)" } },
+    outputSchema: { title: "string", url: "string", text: "string", headings: "array", links: "array", images: "array" },
+    permissionLevel: 0,
+    riskLevel: "none",
+    requiresConfirmation: false,
+    provider: "local",
+    enabled: true,
+    timeout: 15000,
+    retryCount: 0,
+  }, async (input) => {
+    const { extractContent } = await import("./browser.js");
+    return extractContent((input.maxLength as number) || 50000);
+  });
+
+  registerTool({
+    name: "browser.click",
+    description: "Click an element on the page by CSS selector",
+    category: "browser",
+    inputSchema: {
+      selector: { type: "string", description: "CSS selector (e.g. '#submit-btn', 'a.login')" },
+      waitForNavigation: { type: "boolean", description: "Wait for page navigation" },
+    },
+    outputSchema: { success: "boolean", url: "string" },
+    permissionLevel: 1,
+    riskLevel: "low",
+    requiresConfirmation: false,
+    provider: "local",
+    enabled: true,
+    timeout: 15000,
+    retryCount: 0,
+  }, async (input) => {
+    const { clickElement, getCurrentPage } = await import("./browser.js");
+    await clickElement(input.selector as string, { waitForNavigation: input.waitForNavigation as boolean });
+    return getCurrentPage();
+  });
+
+  registerTool({
+    name: "browser.type",
+    description: "Type text into an input field",
+    category: "browser",
+    inputSchema: {
+      selector: { type: "string", description: "CSS selector for input" },
+      text: { type: "string", description: "Text to type" },
+      pressEnter: { type: "boolean", description: "Press Enter after typing" },
+      clear: { type: "boolean", description: "Clear field before typing" },
+    },
+    outputSchema: { success: "boolean" },
+    permissionLevel: 1,
+    riskLevel: "low",
+    requiresConfirmation: false,
+    provider: "local",
+    enabled: true,
+    timeout: 10000,
+    retryCount: 0,
+  }, async (input) => {
+    const { typeText } = await import("./browser.js");
+    await typeText(input.selector as string, input.text as string, {
+      pressEnter: input.pressEnter as boolean,
+      clear: input.clear as boolean,
+    });
+    return { success: true };
+  });
+
+  registerTool({
+    name: "browser.screenshot",
+    description: "Take a screenshot of the current page or a specific element",
+    category: "browser",
+    inputSchema: {
+      fullPage: { type: "boolean", description: "Capture full page (default: viewport only)" },
+      selector: { type: "string", description: "CSS selector to screenshot specific element" },
+    },
+    outputSchema: { base64: "string", width: "number", height: "number" },
+    permissionLevel: 1,
+    riskLevel: "low",
+    requiresConfirmation: false,
+    provider: "local",
+    enabled: true,
+    timeout: 15000,
+    retryCount: 0,
+  }, async (input) => {
+    const { takeScreenshot } = await import("./browser.js");
+    return takeScreenshot({ fullPage: input.fullPage as boolean, selector: input.selector as string });
+  });
+
+  registerTool({
+    name: "browser.elements",
+    description: "List all interactive elements (buttons, links, inputs) on the current page",
+    category: "browser",
+    inputSchema: {},
+    outputSchema: { elements: "array", total: "number" },
+    permissionLevel: 0,
+    riskLevel: "none",
+    requiresConfirmation: false,
+    provider: "local",
+    enabled: true,
+    timeout: 10000,
+    retryCount: 0,
+  }, async () => {
+    const { getInteractiveElements } = await import("./browser.js");
+    const elements = await getInteractiveElements();
+    return { elements, total: elements.length };
+  });
+
+  registerTool({
+    name: "browser.close",
+    description: "Close the browser and free resources",
+    category: "browser",
+    inputSchema: {},
+    outputSchema: { success: "boolean" },
+    permissionLevel: 0,
+    riskLevel: "none",
+    requiresConfirmation: false,
+    provider: "local",
+    enabled: true,
+    timeout: 5000,
+    retryCount: 0,
+  }, async () => {
+    const { closeBrowser } = await import("./browser.js");
+    await closeBrowser();
+    return { success: true };
+  });
+
   const toolCount = toolRegistry.getAll().length;
   console.log(`[kerai] ✅ Registered ${toolCount} built-in tools`);
 
